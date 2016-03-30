@@ -1,0 +1,23 @@
+{
+  "name": "mason",
+  "version": "0.1.0",
+  "description": "Custom language designed for BaiduIFE task36",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Five-African/Mason.git"
+  },
+  "author": "Gizeta",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/Five-African/Mason/issues"
+  },
+  "homepage": "https://github.com/Five-African/Mason#readme",
+  "dependencies": {
+    "del": "^2.2.0",
+    "gulp": "^3.9.1",
+    "gulp-concat": "^2.6.0"
+  }
+}

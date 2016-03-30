@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    textarea {
+      width: 49%;
+      height: 400px;
+      float: left;
+    }
+  </style>
+</head>
+<body>
+  <textarea id="code"></textarea>
+  <textarea id="result"></textarea><br/>
+  <button id="eval">eval</button>
+  <script src="../dist/Mason.js"></script>
+  <script>
+    document.getElementById("eval").onclick = function() {
+      var code = document.getElementById("code").value;
+      var result;
+      try {
+        result = window.Mason.Execute(code);
+      } catch (e) {
+        result = e.message;
+      }
+      document.getElementById("result").value = result;
+    };
+  </script>
+</body>
+</html>
