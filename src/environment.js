@@ -22,8 +22,6 @@
     },
     set: function(name, value) {
       var scope = this.lookup(name);
-      if (!scope && this.parent)
-        throw new Error("Undefined variable " + name);
       if (/[a-z]/.test(name))
         return (scope || this).vars[name] = value;
       else
