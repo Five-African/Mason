@@ -5,7 +5,7 @@ custom language designed for BaiduIFE task36
 ---
 
 ```
-IF expr DO
+IF expr THEN
   # code
 ELSE
   # code
@@ -13,7 +13,7 @@ END
 ```
 
 ```
-FUNC (param, ...) DO
+FUNC param,... DO
   # code
 END
 ```
