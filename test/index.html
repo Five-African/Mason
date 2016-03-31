@@ -19,8 +19,17 @@
     document.getElementById("eval").onclick = function() {
       var code = document.getElementById("code").value;
       var result;
+
+      var env = new window.Mason.Environment();
+      env.def("AUTHOR", "Gizeta");
+      env.def("TEAM", "Five African");
+      env.def("PRINT", function(msg) {
+        console.log(msg);
+        return msg;
+      });
+
       try {
-        result = window.Mason.Execute(code);
+        result = window.Mason.Execute(code, env);
       } catch (e) {
         result = e.message;
       }
