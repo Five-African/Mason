@@ -23,9 +23,10 @@ END
 输出1到10
 
 ```
-loop = FUNC (a,b) DO
+loop = FUNC a,b DO
   PRINT a
-  IF a+1<=b DO
+  # compare
+  IF a+1<=b THEN
     loop a+1,b
   END
 END

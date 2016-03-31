@@ -164,9 +164,8 @@
   }
 
   function TokenStream(input) {
-    var current = [];
-    var last = null;
-    var keywords = " IF ELSE FUNC TRUE FALSE DO END ";
+    var current = null;
+    var keywords = " IF ELSE THEN FUNC TRUE FALSE DO END ";
     return {
       next  : next,
       peek  : peek,
@@ -189,9 +188,9 @@
       return "+-*/%=&|<>!".indexOf(ch) >= 0;
     }
     function is_punc(ch) {
-      return ",;(){}[]".indexOf(ch) >= 0;
+      return ",(){}[]".indexOf(ch) >= 0;
     }
-    function is_sparator(ch) {
+    function is_separator(ch) {
       return "\n".indexOf(ch) >= 0;
     }
     function is_whitespace(ch) {
@@ -243,9 +242,9 @@
     function read_string() {
       return { type: "str", value: read_escaped('"') };
     }
-    function skip_sparator() {
+    function skip_separator() {
       read_while(function(ch) {
-        return is_whitespace(ch) || is_sparator(ch);
+        return is_whitespace(ch) || is_separator(ch);
       });
     }
     function skip_comment() {
@@ -260,28 +259,9 @@
         skip_comment();
         return read_next();
       }
-      if (ch == '"') {
-        if (last && last.type == "var") {
-          current.push({ type : "sparator" });
-        }
-        return read_string();
-      }
-      if (is_digit(ch)) {
-        if (last && last.type == "var") {
-          current.push({ type : "sparator" });
-        }
-        return read_number();
-      }
-      if (is_id_start(ch)) {
-        if (last && last.type == "var") {
-          cur = read_ident();
-          if (cur.type == "var") {
-            current.push({ type : "sparator" });
-          }
-          return cur;
-        }
-        return read_ident();
-      }
+      if (ch == '"') return read_string();
+      if (is_digit(ch)) return read_number();
+      if (is_id_start(ch)) return read_ident();
       if (is_punc(ch)) return {
         type  : "punc",
         value : input.next()
@@ -290,28 +270,21 @@
         type  : "op",
         value : read_while(is_op_char)
       };
-      if (is_sparator(ch)) {
-        skip_sparator();
+      if (is_separator(ch)) {
+        skip_separator();
         return {
-          type  : "punc",
-          value : "\n"
+          type  : "separator"
         };
       }
       input.croak("Can't handle character: " + ch);
     }
     function peek() {
-      if (current.length == 0) {
-        last = read_next();
-        current.push(last);
-      }
-      return current[0];
+      return current || (current = read_next());
     }
     function next() {
-      if (current.length == 0) {
-        last = read_next();
-        current.push(last);
-      }
-      return current.shift();
+      var tok = current;
+      current = null;
+      return tok || read_next();
     }
     function eof() {
       return peek() == null;
@@ -331,7 +304,7 @@
     return parse_toplevel();
     function is_punc(ch) {
       var tok = input.peek();
-      return tok && tok.type == "punc" && (!ch || ch.indexOf(tok.value) >= 0) && tok;
+      return tok && tok.type == "punc" && (!ch || tok.value == ch) && tok;
     }
     function is_kw(kw) {
       var tok = input.peek();
@@ -341,17 +314,13 @@
       var tok = input.peek();
       return tok && tok.type == "op" && (!op || tok.value == op) && tok;
     }
-    function is_sparator() {
+    function is_separator() {
       var tok = input.peek();
-      return tok && tok.type == "sparator";
+      return tok && tok.type == "separator";
     }
     function skip_punc(ch) {
-      if (is_punc(ch) || is_sparator()) input.next();
+      if (is_punc(ch)) input.next();
       else input.croak("Expecting punctuation: \"" + ch + "\"");
-    }
-    function ignore_punc(ch) {
-      if (is_punc(ch) || is_sparator())
-        input.next();
     }
     function skip_kw(kw) {
       if (is_kw(kw)) input.next();
@@ -360,6 +329,10 @@
     function skip_op(op) {
       if (is_op(op)) input.next();
       else input.croak("Expecting operator: \"" + op + "\"");
+    }
+    function skip_separator() {
+      if (is_separator()) input.next();
+      else input.croak("Expecting line break");
     }
     function unexpected() {
       input.croak("Unexpected token: " + JSON.stringify(input.peek()));
@@ -380,36 +353,56 @@
       }
       return left;
     }
-    function delimited(start, stop, separator, parser) {
+    function parse_param(parser, ignore_kw) {
       var a = [], first = true;
-      skip_punc(start);
       while (!input.eof()) {
-        if (is_punc(stop) || is_punc("\n")) break;
-        if (first) first = false; else skip_punc(separator);
-        if (is_punc(stop) || is_punc("\n")) break;
+        if (is_kw("DO") || is_separator()) break;
+        if (first) first = false; else skip_punc(",");
+        if (is_kw("DO") || is_separator()) break;
         a.push(parser());
       }
-      ignore_punc(stop);
+      if (!ignore_kw && is_kw("DO")) {
+        a.push(parse_prog());
+      }
       return a;
     }
-    function delimited_kw(start, stop, separator, parser) {
+    function delimited(start, stop, separator, parser) {
       var a = [], first = true;
       skip_kw(start);
-      ignore_punc("\n");
+      if (is_separator()) skip_separator();
       while (!input.eof()) {
         if (is_kw(stop)) break;
-        if (first) first = false; else skip_punc(separator);
+        if (first) first = false;
+        else {
+          if (separator == "\n") skip_separator();
+          else skip_punc(separator);
+        }
         if (is_kw(stop)) break;
         a.push(parser());
       }
+      if (is_separator()) skip_separator();
       skip_kw(stop);
+      return a;
+    }
+    function delimited_if(separator, parser) {
+      var a = [], first = true;
+      while (!input.eof()) {
+        if (is_kw('ELSE') || is_kw('END')) break;
+        if (first) first = false;
+        else {
+          if (separator == "\n") skip_separator();
+          else skip_punc(separator);
+        }
+        if (is_kw('ELSE') || is_kw('END')) break;
+        a.push(parser());
+      }
       return a;
     }
     function parse_call(func) {
       return {
         type: "call",
         func: func,
-        args: delimited("(", ")", ",", parse_expression),
+        args: parse_param(parse_expression),
       };
     }
     function parse_varname() {
@@ -420,28 +413,26 @@
     function parse_if() {
       skip_kw("IF");
       var cond = parse_expression();
-      skip_kw("DO");
-      ignore_punc("\n");
-      var then = parse_expression();
+      skip_kw("THEN");
+      if (is_separator()) skip_separator();
+      var then = parse_if_prog();
       var ret = {
         type: "if",
         cond: cond,
         then: then,
       };
-      ignore_punc("\n");
       if (is_kw("ELSE")) {
         input.next();
-        ignore_punc("\n");
-        ret.else = parse_expression();
+        if (is_separator()) skip_separator();
+        ret.else = parse_if_prog();
       }
-      ignore_punc("\n");
       skip_kw("END");
       return ret;
     }
     function parse_func() {
       return {
         type: "func",
-        vars: delimited("(", ")", ",", parse_varname),
+        vars: parse_param(parse_varname, true),
         body: parse_prog()
       };
     }
@@ -453,7 +444,7 @@
     }
     function maybe_call(expr) {
       expr = expr();
-      return (is_punc("(") || is_sparator()) ? parse_call(expr) : expr;
+      return (expr.type == "var" && !is_op() && !is_separator() && (!is_kw() || is_kw("DO"))) ? parse_call(expr) : expr;
     }
     function parse_atom() {
       return maybe_call(function(){
@@ -480,12 +471,18 @@
       var prog = [];
       while (!input.eof()) {
         prog.push(parse_expression());
-        if (!input.eof()) skip_punc(";\n");
+        if (!input.eof()) skip_separator();
       }
       return { type: "prog", prog: prog };
     }
     function parse_prog() {
-      var prog = delimited_kw("DO", "END", ";\n", parse_expression);
+      var prog = delimited("DO", "END", "\n", parse_expression);
+      if (prog.length == 0) return FALSE;
+      if (prog.length == 1) return prog[0];
+      return { type: "prog", prog: prog };
+    }
+    function parse_if_prog() {
+      var prog = delimited_if("\n", parse_expression);
       if (prog.length == 0) return FALSE;
       if (prog.length == 1) return prog[0];
       return { type: "prog", prog: prog };
