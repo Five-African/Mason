@@ -444,7 +444,7 @@
     }
     function maybe_call(expr) {
       expr = expr();
-      return (expr.type == "var" && !is_op() && !is_separator() && (!is_kw() || is_kw("DO"))) ? parse_call(expr) : expr;
+      return (expr.type == "var" && !is_op() && !is_separator() && (!is_kw() || is_kw("DO")) && !input.eof()) ? parse_call(expr) : expr;
     }
     function parse_atom() {
       return maybe_call(function(){
