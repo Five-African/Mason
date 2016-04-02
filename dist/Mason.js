@@ -1,3 +1,10 @@
+/**
+ * Mason
+ * https://github.com/Five-African/Mason
+ * 
+ * Copyright 2016 Five-African
+ * Released under the Apache License 2.0
+ */
 (function(global) {
   function Environment(parent) {
     this.vars = Object.create(parent ? parent.vars : null);
